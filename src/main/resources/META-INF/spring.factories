@@ -1,0 +1,3 @@
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+com.liyuyu.sentinel.config.ApolloDatasourceAutoConfiguration,\
+com.liyuyu.sentinel.config.AopAutoConfiguration
