@@ -1,4 +1,4 @@
-package com.liyuyu.sentinel.config;
+package com.liyuyu.sentinel.spring;
 
 import java.util.List;
 
@@ -20,6 +20,7 @@ import com.alibaba.csp.sentinel.util.AppNameUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.TypeReference;
 import com.ctrip.framework.apollo.ConfigService;
+import com.liyuyu.sentinel.ApolloConfigUtil;
 import com.liyuyu.sentinel.datasource.ApolloDataSource;
 
 /**
