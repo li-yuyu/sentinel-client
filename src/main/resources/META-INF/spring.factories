@@ -1,6 +1,8 @@
 org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
-com.liyuyu.sentinel.spring.ApolloDatasourceAutoConfiguration,\
-com.liyuyu.sentinel.spring.AopAutoConfiguration
+com.liyuyu.sentinel.apollo.ApolloDatasourceAutoConfiguration,\
+com.liyuyu.sentinel.spring.SentinelAopAutoConfiguration,\
+com.liyuyu.sentinel.spring.webmvc.SentinelWebMvcAutoConfiguration,\
+com.liyuyu.sentinel.feign.SentinelFeignAutoConfiguration
 
 org.springframework.boot.env.EnvironmentPostProcessor=\
 com.liyuyu.sentinel.spring.SentinelApplicationContextInitializer

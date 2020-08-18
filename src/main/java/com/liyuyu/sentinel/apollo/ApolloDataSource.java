@@ -1,4 +1,4 @@
-package com.liyuyu.sentinel.datasource;
+package com.liyuyu.sentinel.apollo;
 
 import com.alibaba.csp.sentinel.datasource.AbstractDataSource;
 import com.alibaba.csp.sentinel.datasource.Converter;

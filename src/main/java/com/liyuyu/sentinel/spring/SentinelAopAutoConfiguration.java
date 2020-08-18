@@ -24,7 +24,7 @@ import org.springframework.context.annotation.Configuration;
  * @author Eric Zhao
  */
 @Configuration
-public class AopAutoConfiguration {
+public class SentinelAopAutoConfiguration {
 
     @Bean
     public SentinelResourceAspect sentinelResourceAspect() {
