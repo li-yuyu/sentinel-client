@@ -71,8 +71,8 @@ public class SentinelInvocationHandler implements InvocationHandler {
 			if (methodMetadata == null) {
 				result = methodHandler.invoke(args);
 			} else {
-				String resourceName = methodMetadata.template().method().toUpperCase() + ":" + hardCodedTarget.url()
-						+ methodMetadata.template().url();
+				String resourceName = "feign:" + methodMetadata.template().method().toUpperCase() + ":"
+						+ hardCodedTarget.url() + methodMetadata.template().url();
 				// for the flow control by caller
 				methodMetadata.template().header("X-Sentinel-Origin", AppNameUtil.getAppName());
 				Entry entry = null;
