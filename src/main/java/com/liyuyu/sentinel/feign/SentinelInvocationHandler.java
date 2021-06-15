@@ -1,5 +1,18 @@
 package com.liyuyu.sentinel.feign;
 
+import com.alibaba.csp.sentinel.Entry;
+import com.alibaba.csp.sentinel.EntryType;
+import com.alibaba.csp.sentinel.SphU;
+import com.alibaba.csp.sentinel.Tracer;
+import com.alibaba.csp.sentinel.context.ContextUtil;
+import com.alibaba.csp.sentinel.slots.block.BlockException;
+import feign.Feign;
+import feign.InvocationHandlerFactory.MethodHandler;
+import feign.MethodMetadata;
+import feign.Target;
+import feign.hystrix.FallbackFactory;
+import org.slf4j.LoggerFactory;
+
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -7,30 +20,14 @@ import java.lang.reflect.Proxy;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import com.alibaba.csp.sentinel.Entry;
-import com.alibaba.csp.sentinel.EntryType;
-import com.alibaba.csp.sentinel.SphU;
-import com.alibaba.csp.sentinel.Tracer;
-import com.alibaba.csp.sentinel.context.ContextUtil;
-import com.alibaba.csp.sentinel.slots.block.BlockException;
-import com.alibaba.csp.sentinel.util.AppNameUtil;
-
-import feign.Feign;
-import feign.InvocationHandlerFactory.MethodHandler;
-import feign.MethodMetadata;
-import feign.Target;
-import feign.hystrix.FallbackFactory;
-
 import static feign.Util.checkNotNull;
 
 public class SentinelInvocationHandler implements InvocationHandler {
 
+	private static final org.slf4j.Logger LOGGER = LoggerFactory.getLogger(SentinelInvocationHandler.class);
 	private final Target<?> target;
-
 	private final Map<Method, MethodHandler> dispatch;
-
 	private FallbackFactory fallbackFactory;
-
 	private Map<Method, Method> fallbackMethodMap;
 
 	SentinelInvocationHandler(Target<?> target, Map<Method, MethodHandler> dispatch, FallbackFactory fallbackFactory) {
@@ -62,51 +59,41 @@ public class SentinelInvocationHandler implements InvocationHandler {
 
 		Object result;
 		MethodHandler methodHandler = this.dispatch.get(method);
-		// only handle by HardCodedTarget
 		if (target instanceof Target.HardCodedTarget) {
+			// only handle by HardCodedTarget
 			Target.HardCodedTarget hardCodedTarget = (Target.HardCodedTarget) target;
-			MethodMetadata methodMetadata = SentinelContractHolder.METADATA_MAP
-					.get(hardCodedTarget.type().getName() + Feign.configKey(hardCodedTarget.type(), method));
-			// resource default is HttpMethod:protocol://url
+			MethodMetadata methodMetadata = SentinelContractHolder.METADATA_MAP.get(hardCodedTarget.type().getName() + Feign.configKey(hardCodedTarget.type(), method));
 			if (methodMetadata == null) {
 				result = methodHandler.invoke(args);
-			} else {
-				String resourceName = "feign:" + methodMetadata.template().method().toUpperCase() + ":"
-						+ hardCodedTarget.url() + methodMetadata.template().url();
-				// for the flow control by caller
-				methodMetadata.template().header("X-Sentinel-Origin", AppNameUtil.getAppName());
-				Entry entry = null;
-				try {
-					ContextUtil.enter(resourceName);
-					entry = SphU.entry(resourceName, EntryType.OUT, 1, args);
-					result = methodHandler.invoke(args);
-				} catch (Throwable ex) {
-					// fallback handle
-					if (!BlockException.isBlockException(ex)) {
-						Tracer.trace(ex);
-					}
-					if (fallbackFactory != null) {
-						try {
-							Object fallbackResult = fallbackMethodMap.get(method).invoke(fallbackFactory.create(ex),
-									args);
-							return fallbackResult;
-						} catch (IllegalAccessException e) {
-							// shouldn't happen as method is public due to being an
-							// interface
-							throw new AssertionError(e);
-						} catch (InvocationTargetException e) {
-							throw new AssertionError(e.getCause());
-						}
-					} else {
-						// throw exception if fallbackFactory is null
-						throw ex;
-					}
-				} finally {
-					if (entry != null) {
-						entry.exit(1, args);
-					}
-					ContextUtil.exit();
+			}
+			String resourceName = "feign:" + methodMetadata.template().method().toUpperCase() + ":" + hardCodedTarget.url() + methodMetadata.template().url();
+			Entry entry = null;
+			try {
+				ContextUtil.enter(resourceName);
+				entry = SphU.entry(resourceName, EntryType.OUT, 1, args);
+				result = methodHandler.invoke(args);
+			} catch (Throwable ex) {
+				if (LOGGER.isInfoEnabled()) {
+					LOGGER.info("Fallback due to: " + ex.getMessage(), ex);
 				}
+				if (!BlockException.isBlockException(ex)) {
+					Tracer.trace(ex);
+				}
+				if (fallbackFactory == null) {
+					throw ex;
+				}
+				try {
+					return fallbackMethodMap.get(method).invoke(fallbackFactory.create(ex), args);
+				} catch (IllegalAccessException e) {
+					throw new AssertionError(e);
+				} catch (InvocationTargetException e) {
+					throw new AssertionError(e.getCause());
+				}
+			} finally {
+				if (entry != null) {
+					entry.exit(1, args);
+				}
+				ContextUtil.exit();
 			}
 		} else {
 			// other target type using default strategy

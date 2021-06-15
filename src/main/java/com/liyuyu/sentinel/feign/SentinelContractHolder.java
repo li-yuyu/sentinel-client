@@ -19,11 +19,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.alibaba.csp.sentinel.util.AppNameUtil;
 import feign.Contract;
 import feign.MethodMetadata;
 
 /**
- *
  * Using static field {@link SentinelContractHolder#METADATA_MAP} to hold
  * {@link MethodMetadata} data.
  *
@@ -31,23 +31,26 @@ import feign.MethodMetadata;
  */
 public class SentinelContractHolder implements Contract {
 
-	private final Contract delegate;
+    private final Contract delegate;
 
-	/**
-	 * map key is constructed by ClassFullName + configKey. configKey is constructed
-	 * by {@link feign.Feign#configKey}
-	 */
-	public final static Map<String, MethodMetadata> METADATA_MAP = new HashMap<>();
+    /**
+     * map key is constructed by ClassFullName + configKey. configKey is constructed
+     * by {@link feign.Feign#configKey}
+     */
+    public final static Map<String, MethodMetadata> METADATA_MAP = new HashMap<>();
 
-	public SentinelContractHolder(Contract delegate) {
-		this.delegate = delegate;
-	}
+    public SentinelContractHolder(Contract delegate) {
+        this.delegate = delegate;
+    }
 
-	@Override
-	public List<MethodMetadata> parseAndValidatateMetadata(Class<?> targetType) {
-		List<MethodMetadata> metadatas = delegate.parseAndValidatateMetadata(targetType);
-		metadatas.forEach(metadata -> METADATA_MAP.put(targetType.getName() + metadata.configKey(), metadata));
-		return metadatas;
-	}
+    @Override
+    public List<MethodMetadata> parseAndValidatateMetadata(Class<?> targetType) {
+        List<MethodMetadata> metadatas = delegate.parseAndValidatateMetadata(targetType);
+        metadatas.forEach(metadata -> {
+            metadata.template().header("X-Sentinel-Origin", AppNameUtil.getAppName());
+            METADATA_MAP.put(targetType.getName() + metadata.configKey(), metadata);
+        });
+        return metadatas;
+    }
 
 }
